@@ -1,0 +1,32 @@
+server:
+  port: ${PORT:8888}
+spring:
+  application:
+    name: service-registry
+eureka:
+  instance:
+    hostname: ${HOST:localhost}
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+
+info:
+  app:
+    name: service-registry
+    description: "Centeralized Service Registration Server"
+    version: "1.0.0"
+
+# Logging Configuration
+logging:
+  file:
+    name: ${LOG_PATH}
+  level:
+    root: ${LOG_LEVEL_ROOT}
+    com.banking.registry: ${LOG_LEVEL}
+  logback:
+    rollingpolicy:
+      file-name-pattern: ${LOG_PATH}.%d{yyyy-MM-dd}.%i.log.gz
+      max-file-size: 50MB
+      total-size-cap: 1GB
+      max-history: 30
+      clean-history-on-start: false
