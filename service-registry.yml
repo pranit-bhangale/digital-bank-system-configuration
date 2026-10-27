@@ -1,5 +1,5 @@
 server:
-  port: ${PORT:8888}
+  port: ${PORT:8761}
 spring:
   application:
     name: service-registry
@@ -10,6 +10,20 @@ eureka:
     register-with-eureka: false
     fetch-registry: false
 
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      readinessstate:
+        enabled: true
+      show-details: never
 info:
   app:
     name: service-registry
