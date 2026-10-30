@@ -9,7 +9,6 @@ eureka:
   client:
     register-with-eureka: false
     fetch-registry: false
-
 # Actuator Configuration
 management:
   endpoints:
@@ -29,7 +28,6 @@ info:
     name: service-registry
     description: "Centeralized Service Registration Server"
     version: "1.0.0"
-
 # Logging Configuration
 logging:
   file:
