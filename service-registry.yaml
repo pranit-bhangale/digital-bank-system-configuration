@@ -28,13 +28,13 @@ info:
 # Logging Configuration
 logging:
   file:
-    name: ${LOG_PATH}
+    name: ${LOG_PATH:logs/registry.log}
   level:
-    root: ${LOG_LEVEL_ROOT}
-    com.banking.registry: ${LOG_LEVEL}
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.banking.registry: ${LOG_LEVEL:DEBUG}
   logback:
     rollingpolicy:
-      file-name-pattern: ${LOG_PATH}.%d{yyyy-MM-dd}.%i.log.gz
+      file-name-pattern: ${LOG_PATH:logs/registry.log}.%d{yyyy-MM-dd}.%i.log.gz
       max-file-size: 50MB
       total-size-cap: 1GB
       max-history: 30
