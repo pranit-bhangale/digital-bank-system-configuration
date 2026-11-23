@@ -74,11 +74,7 @@ spring:
             back-off-initial-interval: 2000
             back-off-multiplier: 2.0
             back-off-max-interval: 30000
-            default-retryable: true
-            retryable-exceptions:
-              "[com.banking.notification.exception.EmailPermanentDeliveryException]": false
-              "[com.banking.notification.exception.EmailValidationException]": false
-              "[com.banking.notification.exception.EmailRenderException]": false
+            retry-template-name: processEmailRetryTemplate
       # RABBITMQ BINDER CONFIGURATION
       rabbit:
         bindings:
