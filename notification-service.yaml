@@ -24,7 +24,6 @@ spring:
       max-lifetime: 1800000
   # JPA CONFIGURATION
   jpa:
-    defer-datasource-initialization: true
     hibernate:
       ddl-auto: validate
     show-sql: false
