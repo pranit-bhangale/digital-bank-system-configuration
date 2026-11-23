@@ -43,8 +43,8 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME}
-    password: ${RABBITMQ_PASSWORD}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
     connection-timeout: 5s
   cloud:
     stream:
@@ -96,7 +96,7 @@ logging:
     org.hibernate.SQL: WARN
   logback:
     rollingpolicy:
-      file-name-pattern: ${LOG_PATH:logs/notification-service.log}.%d{yyyy-MM-dd}.%i.log.gz
+      file-name-pattern: ${LOG_PATH:logs/user-service.log}.%d{yyyy-MM-dd}.%i.log.gz
       max-file-size: 50MB
       total-size-cap: 1GB
       max-history: 30
