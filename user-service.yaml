@@ -53,6 +53,35 @@ spring:
       bindings:
         processEmail-out-0:
           destination: email.notifications
+# JWT Token Configuration
+security:
+  accessToken:
+    expiration: 900
+  token:
+    issuer: bank
+    # Keys Configuration
+  keys:
+    privateKeyPath: ${PRIVATE_KEY_PATH:key/private_key.pem}
+    publicKeyPath: ${PUBLIC_KEY_PATH:key/public_key.pem}
+cors:
+  allowed-origins:
+    - ${CORS_ALLOWED_ORIGIN}
+  allowed-methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
+    - PATCH
+    - HEAD
+  allowed-headers:
+    - Content-Type
+    - X-API-Version
+    - Accept
+    - Origin
+    - Access-Control-Request-Method
+    - Access-Control-Request-Headers
+  allow-credentials: true
 # EUREKA SERVICE DISCOVERY
 eureka:
   instance:
