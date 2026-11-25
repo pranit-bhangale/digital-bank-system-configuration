@@ -1,0 +1,116 @@
+server:
+  port: ${PORT:8888}
+  shutdown: graceful
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      ssl:
+        enabled: ${REDIS_SSL:false}
+      connect-timeout: 2s
+      timeout: 500ms
+  cloud:
+    function:
+      definition: fraudDetection
+    stream:
+      default-binder: kafka
+      output-bindings: fraudAckOut
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+          auto-create-topics: ${KAFKA_AUTO_CREATE_TOPICS:false}   # true only for local dev
+          min-partition-count: 6
+          replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
+          configuration:
+            security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+        bindings:
+          fraudDetection-in-0:
+            consumer:
+              start-offset: earliest
+              configuration:
+                max.poll.records: 100
+          fraudAckOut:
+            producer:
+              sync: true
+              message-key-expression: headers['kafka_messageKey']
+              configuration:
+                acks: all
+                enable.idempotence: true
+                compression.type: lz4
+                request.timeout.ms: 5000
+                delivery.timeout.ms: 10000
+      bindings:
+        fraudDetection-in-0:
+          destination: payment.initiated
+          group: fraud-service
+          consumer:
+            concurrency: ${FRAUD_CONSUMER_CONCURRENCY:3}
+            max-attempts: 1
+        fraudAckOut:
+          destination: payment.fraud.ack
+fraud:
+  window-ms: 600000
+  window-limit: 5
+  lock-ttl-seconds: 60
+  high-amount: 100000
+  threshold: 60
+  weights:
+    user-velocity: 40
+    card-velocity: 40
+    device-velocity: 20
+    ip-velocity: 10
+    burst: 30
+    high-amount: 30
+# EUREKA SERVICE DISCOVERY
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+# ACTUATOR AND HEALTH CHECKS
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - metrics
+          - prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      readinessstate:
+        enabled: true
+      show-details: never
+  health:
+    mail:
+      enabled: false
+# APPLICATION INFORMATION
+info:
+  app:
+    name: fraud-detection
+    description: Fraud Management Service
+    version: 1.0.0
+# LOGGING CONFIGURATION
+logging:
+  file:
+    name: ${LOG_PATH:logs/fraud-detection.log}
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.banking.fraud: ${LOG_LEVEL:INFO}
+  logback:
+    rollingpolicy:
+      file-name-pattern: ${LOG_PATH:logs/fraud-detection.log}.%d{yyyy-MM-dd}.%i.log.gz
+      max-file-size: 50MB
+      total-size-cap: 1GB
+      max-history: 30
+      clean-history-on-start: false
