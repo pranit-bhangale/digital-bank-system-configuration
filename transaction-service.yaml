@@ -11,7 +11,7 @@ spring:
           public-key-location: ${PUBLIC_KEY_PATH:key/public_key.pem}
   # Database Configuration
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:transaction}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:transaction_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -44,6 +44,44 @@ spring:
     validate-on-migrate: true
     clean-disabled: true
     out-of-order: false
+    cloud:
+    function:
+      definition: fraudAckConsumer
+    stream:
+      default-binder: kafka
+      bindings:
+        # Outbound payment initiated event to fraud detection
+        transactionInitiated-out-0:
+          destination: ${TOPIC_PAYMENT_INITIATED:banking.payment.initiated.v1}
+          contentType: application/json
+        # Inbound fraud evaluation ack from fraud detection
+        fraudAckConsumer-in-0:
+          destination: ${TOPIC_PAYMENT_FRAUD_ACK:banking.payment.fraud-ack.v1}
+          group: transaction-service-group
+          contentType: application/json
+          consumer:
+            concurrency: ${TRANSACTION_CONSUMER_CONCURRENCY:3}
+            max-attempts: 3
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+          auto-create-topics: ${KAFKA_AUTO_CREATE_TOPICS:false}
+          min-partition-count: 6
+          replication-factor: ${KAFKA_REPLICATION_FACTOR:1}
+        bindings:
+          transactionInitiated-out-0:
+            producer:
+              sync: false
+              configuration:
+                acks: all
+                enable.idempotence: true
+                compression.type: lz4
+          fraudAckConsumer-in-0:
+            consumer:
+              start-offset: earliest
+              auto-commit-offset: true
+              configuration:
+                max.poll.records: 50
 cors:
   allowed-origins:
     - ${CORS_ALLOWED_ORIGIN}
@@ -67,6 +105,7 @@ cors:
 eureka:
   instance:
     prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
   client:
     fetch-registry: true
     register-with-eureka: true
@@ -98,6 +137,8 @@ info:
     version: 1.0.0
 # LOGGING CONFIGURATION
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: ${LOG_PATH:logs/transaction-service.log}
   level:
