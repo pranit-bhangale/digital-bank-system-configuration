@@ -11,47 +11,61 @@ spring:
       password: ${REDIS_PASSWORD}
       ssl:
         enabled: ${REDIS_SSL:false}
-      connect-timeout: 2s
+      connect-timeout: 2000ms
       timeout: 500ms
+      client-type: lettuce
+      lettuce:
+        pool:
+          max-active: 64
+          max-idle: 16
+          min-idle: 8
+          max-wait: 1000ms
   cloud:
     function:
       definition: fraudDetection
     stream:
       default-binder: kafka
-      output-bindings: fraudAckOut
+      bindings:
+        # Inbound payment initiated (No retry, No DLQ: exactly 1 attempt)
+        fraudDetection-in-0:
+          destination: ${TOPIC_PAYMENT_INITIATED:banking.payment.initiated.v1}
+          group: fraud-service-group
+          contentType: application/json
+          consumer:
+            concurrency: ${FRAUD_CONSUMER_CONCURRENCY:3}
+            max-attempts: 1
+        # Outbound fraud ack
+        fraudDetection-out-0:
+          destination: ${TOPIC_PAYMENT_FRAUD_ACK:banking.payment.fraud-ack.v1}
+          contentType: application/json
       kafka:
         binder:
           brokers: ${KAFKA_BROKERS:localhost:9092}
-          auto-create-topics: ${KAFKA_AUTO_CREATE_TOPICS:false}   # true only for local dev
+          auto-create-topics: ${KAFKA_AUTO_CREATE_TOPICS:false}
           min-partition-count: 6
-          replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
+          replication-factor: ${KAFKA_REPLICATION_FACTOR:1}
           configuration:
             security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
         bindings:
           fraudDetection-in-0:
             consumer:
               start-offset: earliest
+              auto-commit-offset: true
               configuration:
-                max.poll.records: 100
-          fraudAckOut:
+                max.poll.records: 50
+                session.timeout.ms: 15000
+                heartbeat.interval.ms: 3000
+          fraudDetection-out-0:
             producer:
-              sync: true
-              message-key-expression: headers['kafka_messageKey']
+              sync: false
               configuration:
                 acks: all
                 enable.idempotence: true
                 compression.type: lz4
+                delivery.timeout.ms: 15000
                 request.timeout.ms: 5000
-                delivery.timeout.ms: 10000
-      bindings:
-        fraudDetection-in-0:
-          destination: payment.initiated
-          group: fraud-service
-          consumer:
-            concurrency: ${FRAUD_CONSUMER_CONCURRENCY:3}
-            max-attempts: 1
-        fraudAckOut:
-          destination: payment.fraud.ack
+                batch.size: 16384
+                linger.ms: 5
 fraud:
   window-ms: 600000
   window-limit: 5
@@ -59,16 +73,15 @@ fraud:
   high-amount: 100000
   threshold: 60
   weights:
-    user-velocity: 40
-    card-velocity: 40
-    device-velocity: 20
-    ip-velocity: 10
+    sender-velocity: 40
+    receiver-velocity: 40
     burst: 30
     high-amount: 30
 # EUREKA SERVICE DISCOVERY
 eureka:
   instance:
     prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
   client:
     fetch-registry: true
     register-with-eureka: true
@@ -82,8 +95,6 @@ management:
         include:
           - health
           - info
-          - metrics
-          - prometheus
   endpoint:
     health:
       probes:
@@ -98,15 +109,17 @@ management:
 info:
   app:
     name: fraud-detection
-    description: Fraud Management Service
+    description: "Fraud Management & Real-Time Decisioning Service"
     version: 1.0.0
 # LOGGING CONFIGURATION
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: ${LOG_PATH:logs/fraud-detection.log}
   level:
     root: ${LOG_LEVEL_ROOT:INFO}
-    com.banking.fraud: ${LOG_LEVEL:INFO}
+    com.banking.fraud: ${LOG_LEVEL:DEBUG}
   logback:
     rollingpolicy:
       file-name-pattern: ${LOG_PATH:logs/fraud-detection.log}.%d{yyyy-MM-dd}.%i.log.gz
