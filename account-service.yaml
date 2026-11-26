@@ -72,6 +72,91 @@ eureka:
     register-with-eureka: true
     service-url:
       defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+# Resilience4j Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      # Circuit breaker for User Service Feign Client
+      userService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+        slowCallRateThreshold: 100
+        slowCallDurationThreshold: 5s
+        recordExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.ResourceAccessException
+          - feign.FeignException
+
+      # Circuit breaker for Transaction Service gRPC Client
+      transactionService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+        slowCallRateThreshold: 100
+        slowCallDurationThreshold: 10s
+        recordExceptions:
+          - io.grpc.StatusRuntimeException
+          - java.io.IOException
+
+  retry:
+    instances:
+      userService:
+        maxAttempts: 3
+        waitDuration: 500ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.ResourceAccessException
+
+      transactionService:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - io.grpc.StatusRuntimeException
+
+  timelimiter:
+    instances:
+      userService:
+        timeoutDuration: 5s
+        cancelRunningFuture: true
+      transactionService:
+        timeoutDuration: 10s
+        cancelRunningFuture: true
+
+  ratelimiter:
+    instances:
+      userService:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1s
+        timeoutDuration: 1s
+      transactionService:
+        limitForPeriod: 50
+        limitRefreshPeriod: 1s
+        timeoutDuration: 2s
+# Feign Client Configuration with Circuit Breaker
+feign:
+  resilience4j:
+    enabled: true
+grpc:
+  client:
+    transaction-service:
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext
 # ACTUATOR AND HEALTH CHECKS
 management:
   endpoints:
@@ -80,6 +165,10 @@ management:
         include:
           - health
           - info
+          - circuitbreakers
+          - ratelimiters
+          - retries
+          - timelimiters
   endpoint:
     health:
       probes:
@@ -90,6 +179,10 @@ management:
   health:
     mail:
       enabled: false
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
 # APPLICATION INFORMATION
 info:
   app:
